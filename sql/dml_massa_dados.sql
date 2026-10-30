@@ -53,18 +53,16 @@ INSERT INTO Sub_Categoria (id_sub_categoria, id_categoria, nome_sub_categoria) V
 (3, 2, 'Refrigerantes');
 
 INSERT INTO Estoque (id_estoque, id_sub_categoria, descricao, qtd_estoque, valor_unitario) VALUES 
-(1, 1, 'Leite Integral Caixinha 1L', 149, 5.00), -- Atualizado com saldos consolidados pós-testes
+(1, 1, 'Leite Integral Caixinha 1L', 149, 5.00), 
 (2, 2, 'Arroz Tipo 1 Agulhinha 5kg', 18, 30.00),
 (3, 3, 'Refrigerante de Cola 2L', 48, 9.00);
 
--- Correção do erro 1054: Alinhamento de 'city' para 'cidade'
 INSERT INTO Localidade (id_localidade, cep, logradouro, bairro, cidade, estado) VALUES  
 (1, '08410-000', 'Avenida Laranjeiras', 'Guaianases', 'São Paulo', 'SP'), 
 (2, '08420-110', 'Rua das Flores', 'Cidade Tiradentes', 'São Paulo', 'SP');
 
-
 -- ============================================================================
--- 2. CADASTRO DE PESSOAS, ENTIDADES DE PAPEL E BIOGRAFIAS (CORREÇÃO DE COLUNA)
+-- 2. CADASTRO DE PESSOAS, ENTIDADES DE PAPEL E BIOGRAFIAS
 -- ============================================================================
 
 INSERT INTO Pessoa (id_pessoa, nome, status_pessoa) VALUES 
@@ -83,7 +81,6 @@ INSERT INTO Pessoa_Fisica (id_pessoa, cpf) VALUES
 INSERT INTO Pessoa_Juridica (id_pessoa, cnpj) VALUES 
 (5, '55.555.555/0001-55');
 
--- Correção da coluna 'telefone' (Alinhado com a DDL oficial)
 INSERT INTO Telefone_Pessoa (id_pessoa, telefone) VALUES 
 (1, '11911111111'),
 (2, '11922222222'),
@@ -108,19 +105,17 @@ INSERT INTO Fornecedor (id_fornecedor, id_pessoa_juridica, razao_social) VALUES
 (1, 5, 'Distribuidora Laticínios Vale S/A');
 
 INSERT INTO Ficha_Do_Cliente (id_ficha_do_cliente, id_cliente, limite_credito, saldo_devedor_atual, data_abertura, situacao_credito) VALUES 
-(1, 1, 120.00, 41.20, '2026-10-10', 'Bloqueado'); -- Inicia bloqueado refletindo o teste do cenário 2
+(1, 1, 120.00, 41.20, '2026-10-10', 'Bloqueado');
 
 -- ============================================================================
--- 3. MOVIMENTAÇÕES DE ENTRADA (CENÁRIO 3 E 4: CORREÇÃO DE CONTAGEM DE COLUNAS)
+-- 3. MOVIMENTAÇÕES DE ENTRADA
 -- ============================================================================
 
 INSERT INTO Entrega (id_entrega, id_fornecedor, num_nota_fiscal, data_recebimento, hora_recebimento, valor_total_nota, forma_pagamento, data_vencimento, status_entrega, status_liquidacao, data_pagamento, valor_pago) VALUES 
 (1, 1, 'NF-1001', '2026-10-05', '09:00:00', 500.00, 'Boleto bancário', '2026-10-20', 'Aprovado', 'Pago', '2026-10-18', 500.00),
 (2, 1, 'NF-1002', '2026-10-06', '10:15:00', 300.00, 'Boleto bancário', '2026-10-25', 'Aprovado', 'A Pagar', NULL, NULL),
--- Correção do erro 1136: Alinhamento exato de colunas/valores para NF-1003 paid on act
 (3, 1, 'NF-1003', '2026-10-06', '11:00:00', 600.00, 'Débito automático', '2026-10-06', 'Aprovado', 'Pago', '2026-10-06', 600.00);
 
--- Vinculação estrita de Lotes (Produtos) às Notas Fiscais existentes
 INSERT INTO Produto (id_produto, id_estoque, id_entrega, lote, qtd_total, qtd_recusada, qtd_disponivel, dt_entrada_estoque, data_validade, data_fabricacao, status_produto) VALUES 
 (1, 1, 1, 'LOTE-L1', 100, 0, 91, '2026-10-05', '2026-11-30', '2026-10-01', 'Ativo'),
 (2, 1, 2, 'LOTE-L2', 60, 0, 60, '2026-10-06', '2026-12-15', '2026-10-02', 'Ativo'),
@@ -128,7 +123,7 @@ INSERT INTO Produto (id_produto, id_estoque, id_entrega, lote, qtd_total, qtd_re
 (4, 3, 3, 'LOTE-R1', 50, 0, 48, '2026-10-06', '2026-11-15', '2026-09-25', 'Ativo');
 
 -- ============================================================================
--- 4. HISTÓRICO DE TRANSAÇÕES COMERCIAIS E DEVOLUÇÕES (CENÁRIOS 1, 5 E 6)
+-- 4. HISTÓRICO DE TRANSAÇÕES COMERCIAIS E DEVOLUÇÕES
 -- ============================================================================
 
 INSERT INTO Venda (id_venda, id_funcionario, id_cliente, id_ficha_do_cliente, data, hora, forma_pagamento, status_pagamento) VALUES 
@@ -141,7 +136,7 @@ INSERT INTO Venda (id_venda, id_funcionario, id_cliente, id_ficha_do_cliente, da
 
 INSERT INTO Itens_Venda (id_venda, id_produto, quantidade, preco_unitario_aplicado, desconto_aplicado, valor_total) VALUES 
 (101, 1, 8, 5.00, 0.00, 40.00),
-(102, 4, 2, 9.00, 1.80, 16.20), -- Desconto de validade congelado na venda 102
+(102, 4, 2, 9.00, 1.80, 16.20), 
 (103, 3, 1, 30.00, 0.00, 30.00),
 (104, 3, 1, 30.00, 0.00, 30.00),
 (104, 1, 1, 5.00, 0.00, 5.00),
@@ -161,11 +156,15 @@ INSERT INTO Utiliza_Credito (id_venda, id_devolucao, valor_utilizado) VALUES
 (104, 1, 30.00);
 
 -- ============================================================================
--- 5. CONFERÊNCIA DIÁRIA E BALANÇO FINANCEIRO (CENÁRIO 7)
+-- 5. CONFERÊNCIA DIÁRIA E BALANÇO FINANCEIRO
 -- ============================================================================
 
 INSERT INTO Fechamento_Caixa (id_fechamento, id_funcionario, data_fechamento, saldo_inicial, saldo_final, valor_contado_caixa, diferenca_apurada) VALUES 
 (1, 1, '2026-10-12', 800.00, 815.00, 810.00, -5.00);
+
+-- ============================================================================
+-- 6. REGISTRO DE EXCEÇÕES (DESBARTES E DEVOLUÇÃO FORNECEDOR)
+-- ============================================================================
 
 -- Registrar o descarte de 2 unidades do Lote L1 que venceram na gôndola (RN03)
 UPDATE Produto 
@@ -177,14 +176,12 @@ WHERE id_produto = 1;
 
 UPDATE Estoque SET qtd_estoque = qtd_estoque - 2 WHERE id_estoque = 1;
 
--- Registrar que a mercearia devolveu 5 caixas de leite avariadas do Lote L2 para o fornecedor
+-- Registrar que a mercearia devolveu 5 caixas de leite avariadas do Lote L2 para o fornecedor (RN08)
 INSERT INTO Devolucao_Fornecedor (id_devolucao_fornecedor, data, hora, valor_estorno, forma_acerto) VALUES 
 (1, '2026-10-08', '14:00:00', 25.00, 'Desconto na próxima compra');
 
 INSERT INTO Itens_Devolvidos_Fornecedor (id_devolucao_fornecedor, id_produto, quantidade_devolvida, motivo_devolucao) VALUES 
 (1, 2, 5, 'Caixas amassadas e vazando no recebimento');
 
--- Baixar as quantidades do lote e do estoque geral
 UPDATE Produto SET qtd_disponivel = qtd_disponivel - 5 WHERE id_produto = 2;
 UPDATE Estoque SET qtd_estoque = qtd_estoque - 5 WHERE id_estoque = 1;
-
