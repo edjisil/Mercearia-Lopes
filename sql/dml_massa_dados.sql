@@ -166,3 +166,25 @@ INSERT INTO Utiliza_Credito (id_venda, id_devolucao, valor_utilizado) VALUES
 
 INSERT INTO Fechamento_Caixa (id_fechamento, id_funcionario, data_fechamento, saldo_inicial, saldo_final, valor_contado_caixa, diferenca_apurada) VALUES 
 (1, 1, '2026-10-12', 800.00, 815.00, 810.00, -5.00);
+
+-- Registrar o descarte de 2 unidades do Lote L1 que venceram na gôndola (RN03)
+UPDATE Produto 
+SET qtd_disponivel = qtd_disponivel - 2, 
+    status_produto = 'Descartado', 
+    qtd_descartada = 2, 
+    data_descarte = '2026-10-25' 
+WHERE id_produto = 1;
+
+UPDATE Estoque SET qtd_estoque = qtd_estoque - 2 WHERE id_estoque = 1;
+
+-- Registrar que a mercearia devolveu 5 caixas de leite avariadas do Lote L2 para o fornecedor
+INSERT INTO Devolucao_Fornecedor (id_devolucao_fornecedor, data, hora, valor_estorno, forma_acerto) VALUES 
+(1, '2026-10-08', '14:00:00', 25.00, 'Desconto na próxima compra');
+
+INSERT INTO Itens_Devolvidos_Fornecedor (id_devolucao_fornecedor, id_produto, quantidade_devolvida, motivo_devolucao) VALUES 
+(1, 2, 5, 'Caixas amassadas e vazando no recebimento');
+
+-- Baixar as quantidades do lote e do estoque geral
+UPDATE Produto SET qtd_disponivel = qtd_disponivel - 5 WHERE id_produto = 2;
+UPDATE Estoque SET qtd_estoque = qtd_estoque - 5 WHERE id_estoque = 1;
+
