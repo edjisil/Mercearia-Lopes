@@ -24,9 +24,9 @@ GROUP BY E.id_estoque, E.descricao
 ORDER BY SUM(IV.quantidade) DESC;
 
 -- QUERY BI 2: Quais os picos de clientes e vendas por dia da semana?
--- Versão corrigida para evitar erro de agregação ONLY_FULL_GROUP_BY
+-- Versão 100% blindada com Subquery contra o erro ONLY_FULL_GROUP_BY do MySQL 8
 SELECT 
-    CASE DAYOFWEEK(V.data)
+    CASE DiadasemanaNumero
         WHEN 1 THEN 'Domingo'
         WHEN 2 THEN 'Segunda-feira'
         WHEN 3 THEN 'Terça-feira'
@@ -35,12 +35,20 @@ SELECT
         WHEN 6 THEN 'Sexta-feira'
         WHEN 7 THEN 'Sábado'
     END AS 'Dia da Semana',
-    COUNT(DISTINCT V.id_venda) AS 'Total de Cupons Emitidos',
-    SUM(IV.quantidade) AS 'Volume de Itens Saídos'
-FROM Venda V
-INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
-GROUP BY DAYOFWEEK(V.data)
-ORDER BY DAYOFWEEK(V.data);
+    Total_Cupons AS 'Total de Cupons Emitidos',
+    Volume_Itens AS 'Volume de Itens Saídos'
+FROM (
+    SELECT 
+        DAYOFWEEK(V.data) AS DiadasemanaNumero,
+        COUNT(DISTINCT V.id_venda) AS Total_Cupons,
+        SUM(IV.quantidade) AS Volume_Itens
+    FROM Venda V
+    INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
+    GROUP BY DAYOFWEEK(V.data)
+) AS SubqueryAgrupada
+ORDER BY DiadasemanaNumero;
+
+
 
 -- QUERY BI 3: Em quais meses a venda fiada costuma ser mais frequente?
 SELECT 
