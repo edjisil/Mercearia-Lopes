@@ -1,4 +1,3 @@
-
 -- ============================================================================
 -- PROJETO INTEGRADOR: MERCEARIA LOPES - VERSÃO OFFICIAL 1.6
 -- SCRIPT DQL: CONSULTAS GERENCIAIS DE BI E AUDITORIA DE CAIXA
@@ -11,7 +10,6 @@ USE merceariaLopes;
 -- ============================================================================
 
 -- QUERY BI 1: Quais produtos costumam ter maior demanda de vendas no mês?
--- Propósito: Responder ao gráfico de barras do Top 10 itens para planejamento de compras.
 SELECT 
     E.id_estoque AS 'Código do Item',
     E.descricao AS 'Descrição do Produto',
@@ -26,7 +24,7 @@ GROUP BY E.id_estoque, E.descricao
 ORDER BY SUM(IV.quantidade) DESC;
 
 -- QUERY BI 2: Quais os picos de clientes e vendas por dia da semana?
--- Propósito: Responder ao gráfico de colunas para otimização de escalas de funcionários.
+-- Versão corrigida para evitar erro de agregação ONLY_FULL_GROUP_BY
 SELECT 
     CASE DAYOFWEEK(V.data)
         WHEN 1 THEN 'Domingo'
@@ -41,11 +39,10 @@ SELECT
     SUM(IV.quantidade) AS 'Volume de Itens Saídos'
 FROM Venda V
 INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
-GROUP BY DAYOFWEEK(V.data), V.data
+GROUP BY DAYOFWEEK(V.data)
 ORDER BY DAYOFWEEK(V.data);
 
 -- QUERY BI 3: Em quais meses a venda fiada costuma ser mais frequente?
--- Propósito: Monitorar a flutuação do caderno virtual e risco de capital de giro.
 SELECT 
     MONTH(V.data) AS 'Mês',
     YEAR(V.data) AS 'Ano',
@@ -62,7 +59,6 @@ ORDER BY YEAR(V.data) DESC, MONTH(V.data) DESC;
 -- ============================================================================
 
 -- QUERY 4: Composição Detalhada e Origem da Dívida por Cliente (Cenário 1)
--- Propósito: Provar para o professor que o saldo da Ficha pode ser reconstruído do zero.
 SELECT 
     PE.nome AS 'Cliente',
     F.id_ficha_do_cliente AS 'Nº Caderneta',
@@ -78,7 +74,6 @@ WHERE F.id_ficha_do_cliente = 1
 GROUP BY PE.nome, F.id_ficha_do_cliente, V.id_venda, V.data;
 
 -- QUERY 5: Demonstrativo de Fluxo de Caixa Diário por Período (RN10)
--- Propósito: Apurar Entradas Reais (À vista + Fiado Pago) vs Saídas Reais (Fornecedores Pagos).
 SELECT 
     Movimentacoes.Data_Movimento,
     SUM(Movimentacoes.Entrada) AS 'Total Entradas Efetivas (R$)',
@@ -109,5 +104,3 @@ FROM (
 ) AS Movimentacoes
 GROUP BY Movimentacoes.Data_Movimento
 ORDER BY Movimentacoes.Data_Movimento DESC;
-
-
