@@ -4,7 +4,7 @@
 -- ATENDE REQUISITOS DE INTEGRIDADE, 1FN, 2FN, 3FN E HEUSER (2009)
 -- ============================================================================
 
--- drop database merceariaLopes; -- Apaga o banco de dados e tudo que contém nele
+ -- drop database merceariaLopes; -- Apaga o banco de dados e tudo que contém nele
 
 CREATE DATABASE IF NOT EXISTS merceariaLopes;
 
@@ -350,7 +350,7 @@ BEGIN
     -- ------------------------------------------------------------------------
     -- PASSO 3: REMOÇÃO DE PONTUAÇÕES IMPLÍCITAS (HIGIENIZAÇÃO DE MÁSCARAS)
     -- ------------------------------------------------------------------------
-    SET texto_limpo = REPLACE(texto_limpo, '.', '');
+    SET texto_limpo = REPLACE(texto_limpo, '.', ''); 
     SET texto_limpo = REPLACE(texto_limpo, ',', '');
     SET texto_limpo = REPLACE(texto_limpo, '-', '');
     -- SET texto_limpo = REPLACE(texto_limpo, '/', '');
@@ -368,6 +368,70 @@ DELIMITER ;
 
 DELIMITER $$
 
+USE merceariaLopes;
+
+DELIMITER $$
+
+-- ============================================================================
+-- TRIGGERS DE HIGIENIZAÇÃO: ACEITA COM OU SEM MÁSCARA (CPF)
+-- ============================================================================
+-- DROP TRIGGER IF EXISTS tg_audita_cpf_insert$$
+CREATE TRIGGER tg_audita_cpf_insert BEFORE INSERT ON Pessoa_Fisica
+FOR EACH ROW
+BEGIN
+    -- Remove tudo o que não for número (pontos, traços, espaços, letras)
+    SET NEW.cpf = REGEXP_REPLACE(NEW.cpf, '[^0-9]', '');
+    
+    -- Valida se, após a limpeza, o documento possui os 11 dígitos obrigatórios
+    IF LENGTH(NEW.cpf) <> 11 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Erro: O CPF deve conter exatamente 11 dígitos numéricos.';
+    END IF;
+END$$
+
+-- DROP TRIGGER IF EXISTS tg_audita_cpf_update$$
+CREATE TRIGGER tg_audita_cpf_update BEFORE UPDATE ON Pessoa_Fisica
+FOR EACH ROW
+BEGIN
+    SET NEW.cpf = REGEXP_REPLACE(NEW.cpf, '[^0-9]', '');
+    
+    IF LENGTH(NEW.cpf) <> 11 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Erro: O CPF atualizado deve conter exatamente 11 dígitos numéricos.';
+    END IF;
+END$$
+
+-- ============================================================================
+-- TRIGGERS DE HIGIENIZAÇÃO: ACEITA COM OU SEM MÁSCARA (CNPJ)
+-- ============================================================================
+-- DROP TRIGGER IF EXISTS tg_audita_cnpj_insert$$
+CREATE TRIGGER tg_audita_cnpj_insert BEFORE INSERT ON Pessoa_Juridica
+FOR EACH ROW
+BEGIN
+    -- Remove tudo o que não for número (pontos, traços, barras, espaços, letras)
+    SET NEW.cnpj = REGEXP_REPLACE(NEW.cnpj, '[^0-9]', '');
+    
+    -- Valida se, após a limpeza, o documento possui os 14 dígitos obrigatórios
+    IF LENGTH(NEW.cnpj) <> 14 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Erro: O CNPJ deve conter exatamente 14 dígitos numéricos.';
+    END IF;
+END$$
+
+-- DROP TRIGGER IF EXISTS tg_audita_cnpj_update$$
+CREATE TRIGGER tg_audita_cnpj_update BEFORE UPDATE ON Pessoa_Juridica
+FOR EACH ROW
+BEGIN
+    SET NEW.cnpj = REGEXP_REPLACE(NEW.cnpj, '[^0-9]', '');
+    
+    IF LENGTH(NEW.cnpj) <> 14 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Erro: O CNPJ atualizado deve conter exatamente 14 dígitos numéricos.';
+    END IF;
+END$$
+
+DELIMITER ;
+DELIMITER $$
 -- 1. CATEGORIA
 CREATE TRIGGER tg_categoria_insert BEFORE INSERT ON Categoria FOR EACH ROW 
 BEGIN SET NEW.nome_categoria = fn_higienizar_texto(NEW.nome_categoria); END$$
