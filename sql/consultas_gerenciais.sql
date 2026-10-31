@@ -1,15 +1,14 @@
 -- ============================================================================
 -- PROJETO INTEGRADOR: MERCEARIA LOPES - VERSÃO OFFICIAL 1.6
--- SCRIPT DQL: CONSULTAS GERENCIAIS DE BI E AUDITORIA DE CAIXA
+-- SCRIPT DQL: CONSULTAS GERENCIAIS DE BI E AUDITORIA DE CAIXA (CORRIGIDO)
 -- ============================================================================
-
 USE merceariaLopes;
 
 -- ============================================================================
 -- PARTE 1: AS 3 CONSULTAS DE INTELIGÊNCIA DE NEGÓCIOS (BI) DO PROJETO
 -- ============================================================================
 
--- QUERY BI 1: Quais produtos costumam ter maior demanda de vendas no mês?
+-- QUERY BI 1: Quais produtos costumam ter maior demanda de vendas no histórico?
 SELECT 
     E.id_estoque AS 'Código do Item',
     E.descricao AS 'Descrição do Produto',
@@ -19,12 +18,10 @@ FROM Itens_Venda IV
 INNER JOIN Produto P ON IV.id_produto = P.id_produto
 INNER JOIN Estoque E ON P.id_estoque = E.id_estoque
 INNER JOIN Venda V ON IV.id_venda = V.id_venda
-WHERE MONTH(V.data) = 10 AND YEAR(V.data) = 2026
 GROUP BY E.id_estoque, E.descricao
 ORDER BY SUM(IV.quantidade) DESC;
 
 -- QUERY BI 2: Quais os picos de clientes e vendas por dia da semana?
--- Versão 100% blindada com Subquery contra o erro ONLY_FULL_GROUP_BY do MySQL 8
 SELECT 
     CASE DiadasemanaNumero
         WHEN 1 THEN 'Domingo'
@@ -48,8 +45,6 @@ FROM (
 ) AS SubqueryAgrupada
 ORDER BY DiadasemanaNumero;
 
-
-
 -- QUERY BI 3: Em quais meses a venda fiada costuma ser mais frequente?
 SELECT 
     MONTH(V.data) AS 'Mês',
@@ -58,7 +53,7 @@ SELECT
     SUM(IV.valor_total) AS 'Total Faturado no Fiado (R$)'
 FROM Venda V
 INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
-WHERE V.forma_pagamento = 'Fiado'
+WHERE V.forma_pagamento = 'FIADO' -- CORRIGIDO: Caixa alta para casar com a higienização
 GROUP BY MONTH(V.data), YEAR(V.data)
 ORDER BY YEAR(V.data) DESC, MONTH(V.data) DESC;
 
@@ -92,7 +87,7 @@ FROM (
     SELECT V.data AS Data_Movimento, SUM(IV.valor_total) AS Entrada, 0.00 AS Saida
     FROM Venda V
     INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
-    WHERE V.forma_pagamento <> 'Fiado'
+    WHERE V.forma_pagamento <> 'FIADO' -- CORRIGIDO: Caixa alta
     GROUP BY V.data
     
     UNION ALL
@@ -107,8 +102,93 @@ FROM (
     -- 3. Saídas por Pagamentos Efetivos de Notas Fiscais a Fornecedores
     SELECT data_pagamento AS Data_Movimento, 0.00 AS Entrada, SUM(valor_pago) AS Saida
     FROM Entrega
-    WHERE status_liquidacao = 'Pago' AND data_pagamento IS NOT NULL
+    WHERE status_liquidacao = 'PAGO' AND data_pagamento IS NOT NULL -- CORRIGIDO: Caixa alta
     GROUP BY data_pagamento
 ) AS Movimentacoes
 GROUP BY Movimentacoes.Data_Movimento
 ORDER BY Movimentacoes.Data_Movimento DESC;
+
+-- ============================================================================
+-- PARTE 3: EXPANSÃO DE CONSULTAS DE AUDITORIA, PERFORMANCE E RISCO COMERCIAL
+-- ============================================================================
+
+-- QUERY BI 6: Relatório de Risco e Alerta de Validade Crítica (Próximos 30 dias)
+SELECT 
+    E.descricao AS 'Produto',
+    P.lote AS 'Lote',
+    P.qtd_disponivel AS 'Qtd em Gôndola',
+    P.data_validade AS 'Data de Vencimento',
+    DATEDIFF(P.data_validade, CURDATE()) AS 'Dias Restantes', -- CORRIGIDO: Dinâmico com a data atual
+    CASE 
+        WHEN DATEDIFF(P.data_validade, CURDATE()) <= 7 THEN 'CRÍTICO: Recolher ou Liquidar'
+        WHEN DATEDIFF(P.data_validade, CURDATE()) <= 30 THEN 'ATENÇÃO: Ofertar no Balcão'
+        ELSE 'Normal'
+    END AS 'Status do Risco'
+FROM Produto P
+INNER JOIN Estoque E ON P.id_estoque = E.id_estoque
+WHERE P.status_produto = 'ATIVO' AND P.qtd_disponivel > 0
+ORDER BY P.data_validade ASC;
+
+-- QUERY BI 7: Curva ABC e Ranking Financeiro de Clientes (Faturamento Efetivo)
+SELECT 
+    PE.nome AS 'Nome do Cliente',
+    COUNT(DISTINCT V.id_venda) AS 'Total de Compras Realizadas',
+    SUM(IV.valor_total) AS 'Total Gasto Acumulado (R$)',
+    ROUND(AVG(IV.valor_total), 2) AS 'Ticket Médio por Cupom (R$)'
+FROM Venda V
+INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
+INNER JOIN Cliente C ON V.id_cliente = C.id_cliente
+INNER JOIN Pessoa PE ON C.id_pessoa_fisica = PE.id_pessoa
+GROUP BY PE.nome
+ORDER BY SUM(IV.valor_total) DESC;
+
+-- QUERY BI 8: Auditoria Financeira de Quebras de Estoque, Descartes e Avarias
+SELECT 
+    'Descarte por Vencimento (Loja)' AS 'Tipo de Ocorrência',
+    E.descricao AS 'Item Afetado',
+    P.qtd_descartada AS 'Quantidade Perdia',
+    (P.qtd_descartada * E.valor_unitario) AS 'Prejuízo Estimado (R$)'
+FROM Produto P
+INNER JOIN Estoque E ON P.id_estoque = E.id_estoque
+WHERE P.qtd_descartada > 0
+UNION ALL
+SELECT 
+    'Avaria no Recebimento (Fornecedor)' AS 'Tipo de Ocorrência',
+    E.descricao AS 'Item Afetado',
+    IDF.quantidade_devolvida AS 'Quantidade Perdia',
+    (IDF.quantidade_devolvida * E.valor_unitario) AS 'Prejuízo Estimado (R$)'
+FROM Itens_Devolvidos_Fornecedor IDF
+INNER JOIN Produto P ON IDF.id_produto = P.id_produto
+INNER JOIN Estoque E ON P.id_estoque = E.id_estoque;
+
+-- QUERY BI 9: Desempenho Estatístico de Vendas por Período Horário (Gargalo de Caixa)
+SELECT 
+    CONCAT(Hora_Base, ':00 as ', Hora_Base + 1, ':00') AS 'Intervalo de Tempo',
+    Total_Atendimentos AS 'Volume de Atendimentos',
+    Itens_Passados AS 'Itens Passados no Caixa',
+    Volume_Financeiro AS 'Volume Financeiro Movimentado (R$)'
+FROM (
+    SELECT 
+        HOUR(V.hora) AS Hora_Base,
+        COUNT(DISTINCT V.id_venda) AS Total_Atendimentos,
+        SUM(IV.quantidade) AS Itens_Passados,
+        SUM(IV.valor_total) AS Volume_Financeiro
+    FROM Venda V
+    INNER JOIN Itens_Venda IV ON V.id_venda = IV.id_venda
+    GROUP BY HOUR(V.hora)
+) AS SubqueryHorario
+ORDER BY Volume_Financeiro DESC;
+
+-- QUERY BI 10: Extrato Consolidado de Saúde Fiscal e Logística de Fornecedores
+SELECT 
+    PE.nome AS 'Razão Social / Distribuidor',
+    COUNT(E.id_entrega) AS 'Total de Notas Emitidas',
+    SUM(E.valor_total_nota) AS 'Montante Global Transacionado (R$)',
+    SUM(CASE WHEN E.status_liquidacao = 'A PAGAR' THEN E.valor_total_nota ELSE 0.00 END) AS 'Dívida Ativa com Fornecedor (R$)',
+    SUM(CASE WHEN E.status_entrega = 'DIVERGENTE' OR E.status_entrega = 'COM AVARIA' THEN 1 ELSE 0 END) AS 'Nº de Entregas com Problema'
+FROM Entrega E
+INNER JOIN Fornecedor F ON E.id_fornecedor = F.id_fornecedor
+INNER JOIN Pessoa_Juridica PJ ON F.id_pessoa_juridica = PJ.id_pessoa
+INNER JOIN Pessoa PE ON PJ.id_pessoa = PE.id_pessoa
+GROUP BY PE.nome
+ORDER BY SUM(E.valor_total_nota) DESC;
